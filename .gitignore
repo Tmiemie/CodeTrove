@@ -1,0 +1,31 @@
+# Local secrets and overrides
+.env
+.env.*
+!.env.example
+
+# Java
+**/target/
+*.log
+
+# Node / Vue
+frontend/node_modules/
+frontend/dist/
+
+# Runtime data
+/runtime/
+/data/
+/repositories/
+*.pid
+
+# IDE and OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Local database and middleware files
+*.db
+*.sqlite
+redis-data/
+kafka-data/

@@ -1,0 +1,49 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:codetrove-test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+codetrove:
+  node-id: 1
+  repository:
+    storage-root: ${java.io.tmpdir}/codetrove-test-repositories
+    max-inline-blob-bytes: 1024
+  merge-request:
+    max-diff-files: 200
+    max-file-patch-bytes: 262144
+    max-total-patch-bytes: 2097152
+  git:
+    timeout-seconds: 5
+    max-request-bytes: 4096
+    max-command-bytes: 1024
+    max-object-bytes: 2048
+    max-pack-bytes: 4096
+    max-concurrent-requests: 2
+  eventing:
+    enabled: false
+  curator:
+    enabled: false
+    parallelism: 2
+    skill-timeout: 1s
+    max-attempts: 1
+  assay:
+    enabled: false
+    target-base-url: http://127.0.0.1:18080
+  check-gate:
+    enabled: false
+  auth:
+    jwt-secret: test-only-secret-key-with-at-least-32-bytes
+    access-token-ttl: 15m
+    issuer: codetrove-test
+
+management:
+  endpoint:
+    health:
+      group:
+        readiness:
+          include: readinessState,db,redis,ping
