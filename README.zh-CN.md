@@ -267,7 +267,7 @@ GitHub Actions 执行：
 - Vue TypeScript 检查
 - Vite 生产构建
 
-第三方 Actions 均固定到不可变的 commit SHA。
+第三方 Actions 均固定到不可变的 commit SHA。首次公开 `main` 运行已成功，证据见 `docs/22-github-release-record.md`；当前只证明首轮通过，不夸大为长期稳定运行。
 
 ## 安全说明
 
@@ -280,7 +280,7 @@ GitHub Actions 执行：
 - IDE 工作区文件
 - `node_modules`、`dist` 或 Maven `target` 目录
 
-首次推送到 GitHub 前，CodeTrove 需要完成专项的密钥、隐私、许可证、生成文件与大文件检查。
+首次公开发布已完成密钥、隐私、许可证、生成文件与大文件检查；后续发布仍需重复执行同类审计。
 
 ## 文档
 
@@ -304,6 +304,7 @@ GitHub Actions 执行：
 - `docs/19-m2-event-check-verification-record.md`
 - `docs/20-m3-curator-verification-record.md`
 - `docs/21-m4-assay-verification-record.md`
+- `docs/22-github-release-record.md`
 
 每个可独立验收的功能完成后，必须随实现和验证文档同步更新简历功能台账。
 

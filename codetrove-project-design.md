@@ -54,6 +54,7 @@
 19. [docs/19-m2-event-check-verification-record.md](docs/19-m2-event-check-verification-record.md)：M2 Transactional Outbox、Kafka 至少一次投递、幂等消费、DLQ、Check Suite/Run 与当前 head Merge 门禁验收记录。
 20. [docs/20-m3-curator-verification-record.md](docs/20-m3-curator-verification-record.md)：M3 CodeCurator 确定性静态评审、并行/Judge/幂等评论、Resilience4j 降级与真实环境验收记录。
 21. [docs/21-m4-assay-verification-record.md](docs/21-m4-assay-verification-record.md)：M4 CodeAssay 严格 Schema、受控 HTTP 执行、Kafka/Check 闭环与 Windows 八阶段验收记录。
+22. [docs/22-github-release-record.md](docs/22-github-release-record.md)：首次 GitHub 公开发布、敏感信息/大文件/生成物审计、远端完整性和首轮 CI 证据。
 
 若总设计与细化契约冲突，应先修正文档并形成一致结论，不允许在实现中静默选择其中一种口径。
 

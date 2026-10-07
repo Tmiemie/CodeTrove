@@ -181,10 +181,10 @@
 - [ ] 核心指标由脚本或日志可复现计算。
 - [ ] 简历声明逐条关联实现和证据。
 - [ ] 未实现能力明确列为 Roadmap。
-- [ ] 依赖漏洞、Secret 扫描和许可证检查完成。
-- [ ] .env、数据库密码、JWT/LLM 密钥、运行数据、裸 Git 仓库和 IDE 私有配置均未进入 Git 索引。
-- [ ] Git 历史不存在已删除但仍可恢复的 Secret。
-- [x] 用户已确认 GitHub 目标 `Tmiemie/CodeTrove`、公开可见性与 MIT License；首次 push 和远端 CI 结果在发布步骤验证。
+- [x] 依赖版本、Secret 和许可证检查完成；MIT License 已加入，暂存区未发现真实密钥。完整漏洞/SBOM 扫描仍待后续增强。
+- [x] `.env`、数据库密码、JWT/LLM 密钥、运行数据、裸 Git 仓库和 IDE 私有配置均未进入 Git 索引；`.env.example` 仅含占位值。
+- [x] Git 历史从经过审计的首次本地提交开始，不存在先提交再删除的真实 Secret。
+- [x] 用户已确认 GitHub 目标 `Tmiemie/CodeTrove`、公开可见性与 MIT License；首次 push、218 个远端文件和首轮 GitHub Actions 成功均已验证。
 
 ## 11. 每次交付的最小验证记录模板
 

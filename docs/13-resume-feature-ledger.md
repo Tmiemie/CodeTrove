@@ -1949,6 +1949,9 @@ Git push → Merge Request → CodeCurator 确定性静态评审
 20. 设计 Assay Kafka command/result 与 run-token 租约状态机，HTTP 在事务外执行，结果/幂等 TEST_REPORT/Outbox 在短事务原子提交；旧 head 取消，只有全部启用用例通过才满足 blocking Merge 门禁。
 21. 使用 Vue 3、TypeScript、Pinia、Vue Router 和 vue-i18n 实现代码协作工作台与中英文切换，完成格式、类型、生产构建和浏览器渲染验证。
 22. 建立自动化与 Windows 真实环境双层验收：后端 82 项测试全通过、Flyway V1～V8、全模块 Checkstyle 0 违规；M4 八阶段覆盖真实 Git push 的通过/失败两次 head、Kafka、结构化报告、幂等、门禁、脱敏、零残留与服务恢复。
+23. 将项目首次公开发布到 `Tmiemie/CodeTrove`：以 Git 暂存区审计真实上传文件，排除 Secret、运行数据、IDE/构建产物与大文件，修复 `.gitignore` 误伤前端 `src/data` 的问题，添加 MIT 与跨平台换行/执行位规则；验证远端 218 个文件完整、本地/远端 SHA 一致，并完成首轮 GitHub Actions 成功运行。
+
+> CI 边界：目前只有首次公开 `main` 的一次成功运行证据，可以写“首轮 GitHub Actions 通过”，不能写“远端 CI 长期稳定运行”。
 
 ## 当前不能写入简历的表述
 
@@ -1960,7 +1963,7 @@ Git push → Merge Request → CodeCurator 确定性静态评审
 - “已实现任意项目声明式集成测试平台 / 任意 MR 自动构建部署”——当前是服务端配置 target 或进程内 WireMock 的受控 HTTP 执行器。
 - “已完成通用代码沙箱/Docker 隔离、DB 断言、Spring Bean Mock、fission、cleanup”——这些均属于 M5 后续增强。
 - “已完成流量录制或 AI 自动生成测试用例”——当前用例由当前 Git head 提供，录制与 AI 生成尚未实现。
-- “远端 CI 已稳定运行”——GitHub 尚未首次推送，目前只有配置和本机等价命令证据。
+- “远端 CI 已长期稳定运行”——当前只验证了首次公开 `main` 的一轮 GitHub Actions 成功。
 - “已实现 Refresh Token、Token 撤销和登录限流”——M1.1 未包含这些能力。
 
 ---

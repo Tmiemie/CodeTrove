@@ -267,7 +267,7 @@ GitHub Actions runs:
 - Vue TypeScript check
 - Vite production build
 
-Third-party Actions are pinned to immutable commit SHAs.
+Third-party Actions are pinned to immutable commit SHAs. The first public `main` run completed successfully; see `docs/22-github-release-record.md`. This is one verified run, not a claim of long-term CI stability.
 
 ## Security notes
 
@@ -280,7 +280,7 @@ Never commit:
 - IDE workspace files
 - `node_modules`, `dist`, or Maven `target` directories
 
-Before the first GitHub push, CodeTrove requires a dedicated secret, privacy, license, generated-file, and large-file review.
+The first public GitHub release completed the secret, privacy, license, generated-file, and large-file review. Repeat the same review before future releases.
 
 ## Documentation
 
@@ -304,6 +304,7 @@ Start with:
 - `docs/19-m2-event-check-verification-record.md`
 - `docs/20-m3-curator-verification-record.md`
 - `docs/21-m4-assay-verification-record.md`
+- `docs/22-github-release-record.md`
 
 Every independently accepted feature must update the resume feature ledger together with its implementation and verification documents.
 
