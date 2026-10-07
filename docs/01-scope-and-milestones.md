@@ -152,6 +152,27 @@ CodeTrove 是一个面向 Java 后端项目的代码协作与质量保障平台�
 - 旧 head 任务为 `CANCELLED/MR_STALE`，不能覆盖当前 Check。
 - 文档明确区分“受控 HTTP 执行器”和尚未实现的 MR 分支构建部署、DB/Bean Mock、Docker 沙箱。
 
+### M4.5：前后端真实联调与可交互产品 MVP（已完成）
+
+> 已验收：核心页面已从 `mock.ts` 切换到真实 REST API，浏览器完成登录 → 仓库 → MR → Diff/评论 → Curator/Assay/Check → Merge 主链路。Access Token 与当前仓库只保存在 `sessionStorage`；无后端 API 的设置项只读展示或明确标注边界。验证证据见 [docs/23-m45-frontend-backend-integration-verification-record.md](23-m45-frontend-backend-integration-verification-record.md)。
+
+**范围**
+
+- 注册、登录、退出、当前用户恢复和 401 自动清理会话。
+- 仓库列表、仓库创建、分支/tree/blob 浏览与仓库上下文选择。
+- MR 列表/详情、Diff、评论、当前 Check、Curator Findings、Assay Test Report 和真实 Merge。
+- 加载、空状态和后端 400/401/403/404/409/503 错误展示。
+- Settings、成员管理、Check rerun、Review disposition、归档删除等无后端 API 的入口改为只读边界或隐藏，不伪造保存成功。
+
+**出口条件**
+
+- 浏览器可以注册或登录真实账号，刷新后在当前标签页恢复用户与仓库上下文，退出后清理 Token。
+- 无仓库用户可以创建仓库；已有仓库用户可浏览真实分支、tree 和 UTF-8 blob。
+- 可查看真实 MR、Diff、评论、Check、Curator Finding 与 Assay Report，并可提交普通评论。
+- 满足后端门禁时可通过 UI 发起真实 `MERGE_COMMIT`；失败时展示后端结构化错误，不伪装成功。
+- 前端不再以 `mock.ts` 作为上述核心链路事实源；演示专用或尚无后端能力的内容必须明确标注。
+- Prettier、Vue TypeScript、Vite Build、后端回归和浏览器真实链路验收通过。
+
 ### M5：智能与测试增强
 
 **范围**
@@ -206,7 +227,8 @@ CodeTrove 是一个面向 Java 后端项目的代码协作与质量保障平台�
 
 ## 6. MVP 与 GitHub 发布边界
 
-- 首个可发布 MVP 定义为 M0～M4：工程基线、Codebase、事件与门禁、CodeCurator 基线、CodeAssay 基线。
+- 可交互产品 MVP 定义为 M0～M4.5：工程基线、Codebase、事件与门禁、CodeCurator 基线、CodeAssay 基线，以及浏览器真实前后端联调。
+- M0～M4 表示后端主链路 MVP；M4.5 已通过浏览器真实联调，因此当前可描述为完整可交互产品 MVP。
 - MVP 必须在 Windows 本机完成构建、启动和端到端验收；Docker 只承载本机缺失的中间件。
 - 首次上传 GitHub 前必须通过 Secret、隐私、许可证、生成物和大文件扫描；.env、数据库密码、JWT/LLM 密钥、运行数据、裸 Git 仓库和 IDE 私有配置不得提交。
 - GitHub 建仓、首次 push 和任何后续发布属于外部不可逆操作，必须在本地提交准备完成后由用户单独确认执行。

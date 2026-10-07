@@ -124,7 +124,17 @@ docs/
 7. Check 消费 started/completed，只有当前 head/run 可更新 blocking Run；旧 head 为 `CANCELLED/MR_STALE`。
 8. 当前未构建、部署或执行任意 MR 代码，也没有 Docker 沙箱、DB 断言、Bean Mock、fission、cleanup、流量录制或 AI 用例生成。
 
-### 5.6 Merge
+### 5.6 Web 前端真实联调
+
+1. Vue Router 将 `/login` 作为公开入口，其余工作台路由要求当前标签页存在 Access Token。
+2. `session` Pinia Store 在初始化时调用 `/users/me` 恢复用户，再加载可见仓库；Token 和当前仓库 ID 只保存在 `sessionStorage`。
+3. 统一 API Client 自动添加 Bearer Header，解析 `error.code/message/details/traceId`；401 清理会话并返回登录页。
+4. Vite 开发服务器将 `/api` 代理到本机 Spring Boot，避免开发期跨域；Git Smart HTTP 地址使用独立后端 base URL。
+5. Repository、MR、Diff、评论、Check、Curator、Assay 和 Merge 页面以真实 REST 响应为事实源；`mock.ts` 不再参与核心链路。
+6. MR 详情只在全部 blocking Run 的 `status=SUCCESS` 时启用 Merge；`conclusion` 保留 `NO_FINDINGS/ALL_CASES_PASSED` 等业务原因，不参与统一状态判断。
+7. 已合并 MR 没有 current Suite 时，Actions 展示最近 history Suite；无写 API 的设置项只读展示或明确标注边界。
+
+### 5.7 Merge
 
 1. 读取仓库和 MR，校验 `MERGE` 权限、MR 为 OPEN、策略和幂等键。
 2. 获取单节点仓库级 JVM 写锁，重新读取源/目标分支；expected head 必须等于 MR head 与源引用。

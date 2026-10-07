@@ -4,7 +4,7 @@
 
 CodeTrove 是一个智能代码协作与质量保障平台，将仓库协作、AI 辅助评审、声明式集成测试和合并检查串联成一套完整工作流。
 
-> 当前状态：M0、M1.1～M1.6、M2、M3 和 M4 CodeAssay 声明式 HTTP 基线均已完成。CodeTrove 现已包含认证、仓库权限、Git Smart HTTP、MR、冲突安全/幂等 Merge、Transactional Outbox、Kafka 幂等/DLQ、当前 head Check 门禁、确定性逻辑/安全评审，以及包含 Schema 校验、数据准备、WireMock、响应断言、结构化报告和 blocking Assay Check 的受控 HTTP 测试执行器。外部 LLM/RAG/Memory、任意 MR 构建部署、Docker 沙箱、DB/Bean Mock 断言、流量录制和 AI 用例生成仍属于后续工作。
+> 当前状态：M0～M4.5 均已完成。CodeTrove 现已成为可从浏览器操作的产品 MVP：Vue 工作台通过真实 Spring Boot REST API 完成认证、仓库创建与浏览、MR、Diff、评论、Check/Curator/Assay 报告和门禁合并。后端仍包含此前已验收的仓库权限、Git Smart HTTP、冲突安全/幂等 Merge、Transactional Outbox、Kafka 幂等/DLQ、确定性评审和受控声明式 HTTP 测试。外部 LLM/RAG/Memory、任意 MR 构建部署、Docker 沙箱、DB/Bean Mock 断言、流量录制和 AI 用例生成仍属于后续工作。
 
 ## 当前能力
 
@@ -32,6 +32,8 @@ CodeTrove 是一个智能代码协作与质量保障平台，将仓库协作、A
 - Kafka 驱动的 `assay.execution-requested/started/completed`、数据库消费幂等、run-token 租约恢复，以及只有全部启用用例通过才 SUCCESS 的 blocking Assay Check
 - CodeAssay 明确不是通用沙箱：不构建/部署任意 MR 代码，尚无 Docker 隔离、DB 断言、Spring Bean Mock、fission、cleanup、流量录制或 AI 用例生成
 - Kafka Topic：`codetrove.mr.events.v1`、`codetrove.curator.commands.v1`、`codetrove.curator.results.v1`、`codetrove.assay.commands.v1`、`codetrove.assay.results.v1` 与 `codetrove.dlq.v1`
+- 通过真实 REST API 提供浏览器可操作的登录/注册、仓库选择与创建、分支/tree/blob 浏览、MR 创建/详情/Diff/评论、Check/Curator/Assay 报告和门禁合并
+- JWT 与当前仓库上下文只保存在 `sessionStorage`；展示结构化后端错误并在 401 时自动退出
 - GitHub Actions 后端测试与前端检查
 - 融合克制猫咪策展员形象的蓝紫粉仪表盘界面
 
@@ -107,6 +109,8 @@ CODETROVE_GIT_MAX_COMMAND_BYTES
 CODETROVE_GIT_MAX_OBJECT_BYTES
 CODETROVE_GIT_MAX_PACK_BYTES
 CODETROVE_GIT_MAX_CONCURRENT_REQUESTS
+VITE_CODETROVE_API_BASE_URL
+VITE_CODETROVE_GIT_BASE_URL
 ```
 
 推荐的本地数据库 URL：
@@ -164,7 +168,7 @@ npm --prefix frontend run dev -- --host 127.0.0.1 --port 28741
 
 - `http://127.0.0.1:28741`
 
-当前前端仍使用演示数据，尚未接入后端业务 API。
+前端通过 `/api` 代理连接本机 Spring Boot，核心工作流使用真实后端数据；`mock.ts` 不再作为仓库、MR、Diff、评论、Check、Curator、Assay 或 Merge 页面的事实源。注册或登录后可创建/选择仓库，通过 Git Smart HTTP 推送功能分支，再在浏览器中创建、评审和合并 MR。
 
 ## Git Smart HTTP
 
@@ -304,6 +308,7 @@ GitHub Actions 执行：
 - `docs/19-m2-event-check-verification-record.md`
 - `docs/20-m3-curator-verification-record.md`
 - `docs/21-m4-assay-verification-record.md`
+- `docs/23-m45-frontend-backend-integration-verification-record.md`
 - `docs/22-github-release-record.md`
 
 每个可独立验收的功能完成后，必须随实现和验证文档同步更新简历功能台账。

@@ -1,181 +1,221 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import {
   BookOpen,
   ChevronDown,
-  Clock3,
-  Code2,
   Copy,
   File,
-  FileText,
   Folder,
   GitBranch,
-  GitCommitHorizontal,
-  Scale,
-  ShieldCheck,
-  Tag,
 } from "lucide-vue-next";
-import { repositoryFiles, type FileNode } from "../data/mock";
+import { api } from "../api";
+import { errorMessage } from "../api/client";
+import type { BlobView, Branch, TreeEntry } from "../api/types";
+import { useSessionStore } from "../stores/session";
 import { useWorkspaceStore } from "../stores/workspace";
 import CatPaw from "../components/CatPaw.vue";
 
 const route = useRoute();
-const store = useWorkspaceStore();
+const session = useSessionStore();
+const workspace = useWorkspaceStore();
 const { t } = useI18n();
-const branch = ref("main");
-const cloneOpen = ref(false);
-const branches = ["main", "develop", "feature/repository-workspace"];
+const branches = ref<Branch[]>([]);
+const entries = ref<TreeEntry[]>([]);
+const branch = ref("");
+const path = ref("");
+const blob = ref<BlobView | null>(null);
+const loading = ref(false);
+const error = ref("");
+const createName = ref("CodeTrove Demo");
+const createSlug = ref("codetrove-demo");
+const createDescription = ref("CodeTrove interactive demo repository");
 
-const filteredFiles = computed(() => {
+const filteredEntries = computed(() => {
   const query = String(route.query.q ?? "").toLowerCase();
-  if (!query) return repositoryFiles;
-  return repositoryFiles.filter((file) =>
-    `${file.name} ${t(file.messageKey)}`.toLowerCase().includes(query),
-  );
+  return query
+    ? entries.value.filter((entry) => entry.name.toLowerCase().includes(query))
+    : entries.value;
 });
 
-function ageText(age: FileNode["age"]) {
-  if (age.unit === "yesterday") return t("repository.yesterday");
-  const key =
-    age.unit === "minute"
-      ? "repository.minutesAgo"
-      : age.unit === "hour"
-        ? "repository.hoursAgo"
-        : "repository.daysAgo";
-  return t(key, { count: age.value ?? 0 });
+watch(
+  () => session.currentRepository?.id,
+  () => void loadRepository(),
+  { immediate: true },
+);
+
+async function loadRepository() {
+  if (!session.currentRepository) return;
+  loading.value = true;
+  error.value = "";
+  blob.value = null;
+  path.value = "";
+  try {
+    branches.value = (await api.branches(session.currentRepository.id)).data;
+    branch.value =
+      branches.value.find((item) => item.default)?.name ??
+      branches.value[0]?.name ??
+      "";
+    if (branch.value) await loadTree("");
+    else entries.value = [];
+  } catch (requestError) {
+    error.value = errorMessage(requestError);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function loadTree(nextPath: string) {
+  if (!session.currentRepository || !branch.value) return;
+  loading.value = true;
+  error.value = "";
+  blob.value = null;
+  try {
+    const result = (
+      await api.tree(session.currentRepository.id, branch.value, nextPath)
+    ).data;
+    path.value = result.path;
+    entries.value = result.entries;
+  } catch (requestError) {
+    error.value = errorMessage(requestError);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function openEntry(entry: TreeEntry) {
+  if (entry.type === "TREE") return loadTree(entry.path);
+  if (!session.currentRepository) return;
+  loading.value = true;
+  error.value = "";
+  try {
+    blob.value = (
+      await api.blob(session.currentRepository.id, branch.value, entry.path)
+    ).data;
+  } catch (requestError) {
+    error.value = errorMessage(requestError);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function createRepository() {
+  try {
+    await session.createRepository({
+      name: createName.value,
+      slug: createSlug.value,
+      description: createDescription.value,
+      visibility: "PRIVATE",
+      initializeWithReadme: true,
+    });
+    await loadRepository();
+  } catch {
+    error.value = session.error;
+  }
 }
 
 function copyCloneUrl() {
-  navigator.clipboard?.writeText("https://github.com/Tmiemie/CodeTrove.git");
-  store.notifyKey("repository.cloneCopied");
-  cloneOpen.value = false;
+  if (!session.currentRepository) return;
+  const gitBaseUrl = (
+    import.meta.env.VITE_CODETROVE_GIT_BASE_URL || "http://127.0.0.1:8080"
+  ).replace(/\/$/, "");
+  const url = `${gitBaseUrl}${session.currentRepository.gitHttpUrl}`;
+  void navigator.clipboard?.writeText(url);
+  workspace.notifyKey("repository.cloneCopied");
 }
 </script>
 
 <template>
-  <div class="repo-grid">
-    <section class="main-column">
-      <div v-if="route.query.q" class="search-result-note">
-        {{ t("repository.searchMatches", { query: route.query.q }) }}
-      </div>
+  <section
+    v-if="!session.currentRepository"
+    class="settings-card form-card empty-workspace"
+  >
+    <CatPaw :size="34" />
+    <h1>{{ t("repository.createFirst") }}</h1>
+    <p>{{ t("repository.createDescription") }}</p>
+    <label
+      >{{ t("repository.repositoryName") }}<input v-model="createName"
+    /></label>
+    <label
+      >{{ t("repository.repositorySlug") }}<input v-model="createSlug"
+    /></label>
+    <label
+      >{{ t("repository.repositoryDescription")
+      }}<textarea v-model="createDescription"></textarea>
+    </label>
+    <div v-if="session.error" class="api-error">{{ session.error }}</div>
+    <button
+      class="button button-primary"
+      :disabled="session.loading"
+      @click="createRepository"
+    >
+      {{ t("repository.createRepository") }}
+    </button>
+  </section>
 
+  <div v-else class="repo-grid">
+    <section class="main-column">
+      <div v-if="error" class="api-error">{{ error }}</div>
       <div class="toolbar">
         <div class="toolbar-group">
-          <label class="select-button">
-            <GitBranch :size="15" />
-            <select v-model="branch" :aria-label="t('repository.selectBranch')">
-              <option v-for="item in branches" :key="item">{{ item }}</option>
-            </select>
-            <ChevronDown :size="14" />
-          </label>
-          <button
-            class="button button-quiet"
-            type="button"
-            @click="
-              store.notifyKey('repository.branchesAvailable', { count: 3 })
-            "
-          >
-            <GitBranch :size="15" />
-            {{ t("repository.branches", { count: 3 }) }}
-          </button>
-          <button
-            class="button button-quiet"
-            type="button"
-            @click="store.notifyKey('repository.releasesTagged', { count: 12 })"
-          >
-            <Tag :size="15" /> {{ t("repository.tags", { count: 12 }) }}
-          </button>
-        </div>
-        <div class="clone-wrap">
-          <button
-            class="button button-primary"
-            type="button"
-            @click="cloneOpen = !cloneOpen"
-          >
-            <Code2 :size="16" /> {{ t("common.code") }}
-            <ChevronDown :size="14" />
-          </button>
-          <div v-if="cloneOpen" class="clone-popover">
-            <strong>{{ t("repository.clone") }}</strong>
-            <p>{{ t("repository.cloneHelp") }}</p>
-            <div class="copy-field">
-              <code>https://github.com/Tmiemie/CodeTrove.git</code
-              ><button
-                type="button"
-                :aria-label="t('repository.copyCloneUrl')"
-                @click="copyCloneUrl"
+          <label class="select-button"
+            ><GitBranch :size="15" /><select
+              v-model="branch"
+              @change="loadTree('')"
+            >
+              <option
+                v-for="item in branches"
+                :key="item.name"
+                :value="item.name"
               >
-                <Copy :size="15" />
-              </button>
-            </div>
-          </div>
+                {{ item.name }}
+              </option></select
+            ><ChevronDown :size="14"
+          /></label>
+          <button v-if="path" class="button button-quiet" @click="loadTree('')">
+            {{ t("repository.backToRoot") }}
+          </button>
         </div>
-      </div>
-
-      <div class="commit-banner">
-        <div class="commit-avatar">TZ</div>
-        <div class="commit-main">
-          <strong>Tmiemie</strong
-          ><span>{{ t("repository.commitMessage") }}</span>
-        </div>
-        <code>7ca91be</code>
-        <span class="muted"
-          ><Clock3 :size="14" />
-          {{ t("repository.minutesAgo", { count: 12 }) }}</span
-        >
-        <button
-          class="button button-quiet"
-          type="button"
-          @click="store.notifyKey('repository.showingCommits', { count: 37 })"
-        >
-          <GitCommitHorizontal :size="15" />
-          {{ t("repository.commits", { count: 37 }) }}
+        <button class="button button-primary" @click="copyCloneUrl">
+          <Copy :size="15" /> {{ t("repository.copyCloneUrl") }}
         </button>
       </div>
 
-      <div class="file-table">
-        <div
-          v-for="file in filteredFiles"
-          :key="file.name"
-          class="file-row"
-          @click="store.notifyKey('repository.openedFile', { name: file.name })"
+      <div v-if="loading" class="empty-state">{{ t("common.loading") }}</div>
+      <div v-else-if="!branch" class="empty-state cat-empty">
+        <CatPaw :size="28" /><strong>{{
+          t("repository.emptyRepository")
+        }}</strong>
+      </div>
+      <div v-else class="file-table">
+        <button
+          v-for="entry in filteredEntries"
+          :key="entry.objectId"
+          class="file-row real-file-row"
+          @click="openEntry(entry)"
         >
           <component
-            :is="file.type === 'folder' ? Folder : File"
+            :is="entry.type === 'TREE' ? Folder : File"
             :size="17"
-            :class="file.type"
+            :class="entry.type === 'TREE' ? 'folder' : 'file'"
           />
-          <button type="button" class="file-name">{{ file.name }}</button>
-          <span class="file-message">{{ t(file.messageKey) }}</span>
-          <span class="file-time">{{ ageText(file.age) }}</span>
-        </div>
-        <div v-if="filteredFiles.length === 0" class="empty-state cat-empty">
-          <CatPaw :size="28" /><strong>{{ t("repository.emptyTitle") }}</strong
-          ><span>{{ t("repository.emptyDescription") }}</span>
+          <span class="file-name">{{ entry.name }}</span
+          ><span class="file-message">{{ entry.type }}</span
+          ><span class="file-time">{{ entry.size ?? "—" }}</span>
+        </button>
+        <div v-if="filteredEntries.length === 0" class="empty-state cat-empty">
+          <CatPaw :size="28" /><strong>{{ t("repository.emptyTitle") }}</strong>
         </div>
       </div>
 
-      <article class="readme-card">
-        <header><BookOpen :size="17" /><strong>README.md</strong></header>
-        <div class="readme-content">
-          <h1>CodeTrove</h1>
-          <p class="lead">{{ t("repository.readmeTagline") }}</p>
-          <div class="readme-badges">
-            <span>Java 17</span><span>Spring Boot 3</span><span>Vue 3</span
-            ><span>{{ t("repository.qualityGate") }}</span>
-          </div>
-          <h2>{{ t("repository.readmeHeading") }}</h2>
-          <p>{{ t("repository.readmeDescription") }}</p>
-          <pre><code>push → pull request → CodeCurator → CodeAssay → merge gate</code></pre>
-          <h2>{{ t("repository.localDevelopment") }}</h2>
-          <ul>
-            <li>{{ t("repository.backendItem") }}</li>
-            <li>{{ t("repository.frontendItem") }}</li>
-            <li>{{ t("repository.databaseItem") }}</li>
-            <li>{{ t("repository.middlewareItem") }}</li>
-          </ul>
+      <article v-if="blob" class="readme-card blob-card">
+        <header>
+          <BookOpen :size="17" /><strong>{{ blob.path }}</strong>
+        </header>
+        <pre v-if="blob.contentIncluded"><code>{{ blob.content }}</code></pre>
+        <div v-else class="empty-state">
+          {{ t("repository.fileUnavailable") }} · {{ blob.notIncludedReason }}
         </div>
       </article>
     </section>
@@ -183,64 +223,15 @@ function copyCloneUrl() {
     <aside class="sidebar-column">
       <section class="side-section">
         <h2>{{ t("repository.about") }}</h2>
-        <p>{{ t("repository.aboutDescription") }}</p>
-        <dl class="repo-meta">
-          <div>
-            <dt><BookOpen :size="15" /> {{ t("repository.readme") }}</dt>
-            <dd>{{ t("common.available") }}</dd>
-          </div>
-          <div>
-            <dt><Scale :size="15" /> {{ t("repository.license") }}</dt>
-            <dd>MIT</dd>
-          </div>
-          <div>
-            <dt><ShieldCheck :size="15" /> {{ t("repository.security") }}</dt>
-            <dd>{{ t("repository.policyDefined") }}</dd>
-          </div>
-        </dl>
+        <p>{{ session.currentRepository.description || "—" }}</p>
       </section>
       <section class="side-section">
-        <h2>{{ t("repository.releases") }}</h2>
-        <div class="release-item">
-          <Tag :size="17" />
-          <div>
-            <strong>M0 backend skeleton</strong
-            ><span>{{
-              t("repository.latest", {
-                time: t("repository.daysAgo", { count: 2 }),
-              })
-            }}</span>
-          </div>
-        </div>
-        <button
-          class="text-button"
-          type="button"
-          @click="store.notifyKey('repository.allReleasesOpened')"
-        >
-          {{ t("repository.viewAllReleases") }}
-        </button>
+        <h2>{{ t("repository.branches", { count: branches.length }) }}</h2>
+        <p>{{ branch || "—" }}</p>
       </section>
       <section class="side-section">
-        <h2>{{ t("repository.languages") }}</h2>
-        <div class="language-bar">
-          <span class="java"></span><span class="vue"></span
-          ><span class="other"></span>
-        </div>
-        <div class="language-list">
-          <span><i class="dot java-dot"></i>Java <b>61.2%</b></span
-          ><span><i class="dot vue-dot"></i>Vue <b>31.8%</b></span
-          ><span
-            ><i class="dot other-dot"></i>{{ t("repository.other") }}
-            <b>7.0%</b></span
-          >
-        </div>
-      </section>
-      <section class="side-section license-note">
-        <FileText :size="17" />
-        <div>
-          <strong>{{ t("repository.licensePending") }}</strong>
-          <p>{{ t("repository.licenseDescription") }}</p>
-        </div>
+        <h2>Git Smart HTTP</h2>
+        <code>{{ session.currentRepository.gitHttpUrl }}</code>
       </section>
     </aside>
   </div>

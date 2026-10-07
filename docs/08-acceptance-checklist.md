@@ -123,7 +123,26 @@
 - [ ] 任意外部 application target 的真实部署集成（M4 自动化与实机验收使用进程内 WireMock；服务端配置 target 的代码路径已实现）。
 - [ ] Docker 沙箱、DB 断言、Spring Bean Mock、fission、cleanup、流量录制和 AI 用例生成（均属后续阶段）。
 
-## 7. M5 增强能力
+## 7. M4.5 前后端真实联调
+
+> 验收证据见 [docs/23-m45-frontend-backend-integration-verification-record.md](23-m45-frontend-backend-integration-verification-record.md)。
+
+- [x] 登录/注册调用真实 Auth API；Access Token 只写 `sessionStorage`，401 自动清理并跳转登录页。
+- [x] 工作台显示真实用户、仓库、可见性与角色，支持真实仓库切换和退出。
+- [x] 无仓库用户可创建真实仓库；分支、tree、UTF-8 blob 与 Git URL 来自后端。
+- [x] MR 列表、创建、详情和受限 Diff 使用真实 API；没有第二个分支时明确提示先通过 Git Smart HTTP 推送。
+- [x] 普通评论写入后端并在刷新后保留。
+- [x] 当前或最近历史 Check Suite、Curator Findings 和 Assay Report 使用真实后端结果。
+- [x] blocking Run 以 `status=SUCCESS` 判定通过，`conclusion` 保留 `NO_FINDINGS/ALL_CASES_PASSED` 等业务原因。
+- [x] 无启用 Assay 用例时返回 `SKIPPED/NO_ENABLED_CASES` 并阻止 Merge。
+- [x] Curator 与 Assay 成功时通过 UI 完成真实 `MERGE_COMMIT`，MR 状态刷新为 `MERGED`。
+- [x] Actions 对已合并 MR 回退展示最近 history Suite，不错误显示 `NOT_STARTED`。
+- [x] Settings 对无 REST API 的成员、规则、重跑、处置和归档能力只读展示，不伪造成功。
+- [x] 新增页面支持 `en-US/zh-CN`，登录页在未认证状态也可切换语言。
+- [x] Prettier、Vue TypeScript、Vite Build 和浏览器渲染通过。
+- [x] 后端 82 项测试、Flyway V1～V8 与全模块 Checkstyle 通过；最终 JAR 打包成功并恢复 Readiness。
+
+## 8. M5 增强能力
 
 ### Curator
 
@@ -144,7 +163,7 @@
 - [ ] 容器默认不能访问宿主机、Docker Socket 和未授权网络。
 - [ ] 超时或崩溃后容器与临时资源被清理。
 
-## 8. M6 流量录制与 AI 用例
+## 9. M6 流量录制与 AI 用例
 
 - [ ] 录制默认关闭，只能按授权配置开启。
 - [ ] Authorization、Cookie、Set-Cookie 不进入 Kafka。
@@ -157,7 +176,7 @@
 - [ ] 未经人工批准的候选用例不参与阻塞回归。
 - [ ] 删除操作覆盖元数据、文件和向量投影。
 
-## 9. M7 容量与可用性
+## 10. M7 容量与可用性
 
 - [ ] 建立基线压测数据与目标 SLO。
 - [ ] 每个新增中间件有引入前后对比。
@@ -170,7 +189,7 @@
 - [ ] 时钟回拨下 Snowflake 不产生重复 ID。
 - [ ] Kafka、MySQL、Redis、LLM 故障演练有记录。
 
-## 10. M8 交付
+## 11. M8 交付
 
 - [ ] README 从空环境开始可执行。
 - [ ] 本机 MySQL 接入说明、Docker Compose 中间件、迁移和种子数据版本一致。
@@ -186,7 +205,7 @@
 - [x] Git 历史从经过审计的首次本地提交开始，不存在先提交再删除的真实 Secret。
 - [x] 用户已确认 GitHub 目标 `Tmiemie/CodeTrove`、公开可见性与 MIT License；首次 push、218 个远端文件和首轮 GitHub Actions 成功均已验证。
 
-## 11. 每次交付的最小验证记录模板
+## 12. 每次交付的最小验证记录模板
 
 ```markdown
 ### 验收项
@@ -204,7 +223,7 @@
 - 遗留问题：
 ```
 
-## 12. 阶段放行规则
+## 13. 阶段放行规则
 
 只有满足以下条件才能宣布阶段完成：
 

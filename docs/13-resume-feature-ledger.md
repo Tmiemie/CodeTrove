@@ -26,8 +26,9 @@ Git push → Merge Request → CodeCurator 确定性静态评审
 - M2 Transactional Outbox、Kafka 至少一次投递/幂等消费/DLQ、Check Suite/Run 与当前 head Merge 门禁。
 - M3 CodeCurator 确定性静态评审：逻辑/安全 Skill、并行编排、Judge、ReviewTask/Finding、幂等系统行级评论、当前 head 查询与 Resilience4j 降级。
 - M4 CodeAssay 声明式 HTTP 测试基线：严格 Schema、受限表达式与 `data_pre`、WireMock、响应断言、Execution/CaseResult、Kafka command/result、幂等 TEST_REPORT 与 blocking Check。
+- M4.5 前后端真实联调与可交互产品 MVP：真实登录/仓库/MR/Diff/评论/Check/Curator/Assay/Merge 浏览器主链路。
 
-尚未完成：成员管理 API、Review/Approval、外部 LLM/RAG/Memory、任意 MR 自动构建部署、Docker 测试沙箱、DB/Bean Mock 断言、流量录制与 AI 生成用例。因此简历中只能写“CodeCurator 确定性静态评审编排基线”和“CodeAssay 受控声明式 HTTP 测试基线”，不能写“已接入 LLM/已完成 AI 代码评审”“任意项目集成测试平台”或“Docker 沙箱已完成”。
+尚未完成：成员管理 API、Review/Approval、仓库更新/归档/删除、Check rerun、Finding disposition、外部 LLM/RAG/Memory、任意 MR 自动构建部署、Docker 测试沙箱、DB/Bean Mock 断言、流量录制与 AI 生成用例。因此简历中只能写“CodeCurator 确定性静态评审编排基线”和“CodeAssay 受控声明式 HTTP 测试基线”，不能写“已接入 LLM/已完成 AI 代码评审”“任意项目集成测试平台”或“Docker 沙箱已完成”。
 
 ---
 
@@ -348,8 +349,8 @@ Git push → Merge Request → CodeCurator 确定性静态评审
 
 ### 当前边界
 
-- 当前页面使用演示数据，尚未连接 M1 后端业务 API。
-- 不能描述为前后端完整联调或真实 Git 仓库数据展示。
+- M0-F07 当时是 UI 原型；该边界已由 M4.5 消除，核心仓库、MR、Diff、评论、Check、Curator、Assay 与 Merge 页面现已连接真实后端 API。
+- `mock.ts` 可继续保留非核心视觉示例，但不再作为可交互产品主链路的事实源。
 
 ---
 
@@ -496,7 +497,7 @@ Git push → Merge Request → CodeCurator 确定性静态评审
 ### 当前边界
 
 - Refresh Token、Token 撤销、密钥轮换、多设备会话管理尚未实现。
-- Access Token 不应保存到浏览器 Local Storage；前端登录态尚未接入。
+- M4.5 已将 Access Token 保存在当前标签页 `sessionStorage`，401 时清理会话；未使用 Local Storage 保存 Token。
 
 ---
 
@@ -1919,11 +1920,74 @@ Git push → Merge Request → CodeCurator 确定性静态评审
 
 ---
 
-# 13. 当前可组合的简历项目描述
+# 13. M4.5 前后端真实联调与可交互产品 MVP
+
+## 功能 M4.5-F01：真实 REST 会话与浏览器主链路
+
+### 新增能力
+
+- 将 Vue 核心页面从 `mock.ts` 切换为真实 Spring Boot REST API。
+- 支持真实注册/登录、用户恢复、仓库创建与切换、分支/tree/blob 浏览。
+- 支持 MR 创建/列表/详情、Diff、普通评论、Check/Curator/Assay 报告和门禁 Merge。
+- Settings 对无 API 能力只读展示，不提供伪保存、伪成员管理或伪归档。
+
+### 技术栈
+
+- Vue 3 / TypeScript / Vite
+- Pinia / Vue Router / vue-i18n
+- Fetch API / Vite Dev Proxy
+- Spring Boot REST / JWT / Git Smart HTTP
+
+### 实现细节
+
+- 统一 API Client 自动添加 Bearer Token、解析结构化错误与 Trace ID、将网络异常映射为明确错误，并在 401 时清理会话。
+- Token 与当前仓库只保存在 `sessionStorage`；语言偏好继续使用独立 Local Storage key。
+- Vite 将 `/api` 代理到本机后端；Git clone base URL 与 REST base URL 分离并支持环境变量覆盖。
+- 前端 64 位 ID 全程使用字符串，避免 JavaScript 精度丢失。
+- MR 详情并行读取详情、Diff、评论、Check、Curator 和 Assay；评论与 Merge 是真实写请求。
+- 合并按钮只在全部 blocking Check Run 的 `status=SUCCESS` 时启用；`conclusion` 保留 `NO_FINDINGS/ALL_CASES_PASSED` 等业务原因。
+- 已合并 MR 没有 current Suite 时，Actions 回退展示最近 history Suite，避免错误显示未开始。
+
+### 难点与取舍
+
+- 没有继续用本地 Store 模拟后端成功，而是把所有核心事实收敛到 API；范围外功能宁可只读，也不制造假交互。
+- 浏览器验收发现前端一度误要求 `conclusion=SUCCESS`，与后端“status 表示通用结果、conclusion 表示业务原因”的契约不一致；按真实返回修正并重新验证 Merge。
+- 短期 JWT 到期会中断写操作；前端按 401 清理并返回登录页，不缓存密码、不伪造成功。Refresh Token 留到后续认证增强。
+
+### 验证证据
+
+- `frontend/src/api/client.ts`
+- `frontend/src/api/index.ts`
+- `frontend/src/stores/session.ts`
+- `frontend/src/views/AuthView.vue`
+- `frontend/src/views/RepositoryView.vue`
+- `frontend/src/views/PullRequestsView.vue`
+- `frontend/src/views/PullRequestDetailView.vue`
+- `frontend/src/views/ActionsView.vue`
+- `frontend/src/views/SettingsView.vue`
+- `docs/23-m45-frontend-backend-integration-verification-record.md`
+- Prettier、`vue-tsc -b`、Vite production build 通过。
+- 浏览器真实完成注册/登录、建仓、分支/tree/blob、MR、Diff、评论、Curator/Assay/Check 与 `MERGED` 状态闭环。
+- 后端完整 `verify`：82 项测试，0 失败/错误/跳过；全模块 Checkstyle 0 违规；Flyway V1～V8 与最终 JAR 打包成功。
+
+### 可用于简历的表述
+
+> 使用 Vue 3、TypeScript、Pinia 与统一 Fetch Client 将代码协作工作台接入真实 Spring Boot REST API，基于 sessionStorage 管理短期 JWT 与仓库上下文，完成注册/登录、仓库与 Git 内容浏览、MR/Diff/评论、Curator/Assay/Check 报告及门禁 Merge 的浏览器闭环；通过结构化错误、401 自动退出和只读能力边界避免前端伪成功。
+
+### 当前边界
+
+- 当前没有 Refresh Token、Token 撤销、登录限流或 Cookie 会话。
+- 成员管理、仓库更新/归档/删除、规则编辑、Check rerun 和 Finding disposition 写 API 尚未实现。
+- 浏览器不编辑或上传任意代码；功能分支仍通过 Git Smart HTTP 推送。
+- 本阶段没有增加后端测试数量，新增证据是前端构建与 Windows 浏览器真实链路；后端回归仍为 82 项。
+
+---
+
+# 14. 当前可组合的简历项目描述
 
 ## 一句话版本
 
-> CodeTrove 是一个基于 Java 17、Spring Boot 3.5 与 Vue 3 构建的智能代码协作与质量保障平台，目前已完成模块化工程基线、统一 API/Trace、双语前端工作台、JWT 认证、仓库元数据、JGit Smart HTTP、分支/文件浏览、基于真实 Git 的 MR/Diff/行级评论、push 后 head 历史同步、冲突安全的幂等 merge commit、Transactional Outbox、Kafka 幂等消费/DLQ、按 head 的 Check Merge 门禁、CodeCurator 确定性静态评审，以及 CodeAssay 受控声明式 HTTP 测试基线；外部 LLM、沙箱和流量生成能力仍为后续方向。
+> CodeTrove 是一个基于 Java 17、Spring Boot 3.5 与 Vue 3 构建的智能代码协作与质量保障平台，已完成可交互产品 MVP：浏览器通过真实 REST API 完成认证、仓库、MR、Diff/评论、Curator/Assay/Check 与门禁 Merge；后端包含模块化单体、JGit Smart HTTP、冲突安全的幂等合并、Transactional Outbox、Kafka 幂等/DLQ、确定性静态评审和受控声明式 HTTP 测试，外部 LLM、沙箱与流量生成仍为后续方向。
 
 ## 当前推荐的简历要点
 
@@ -1947,9 +2011,10 @@ Git push → Merge Request → CodeCurator 确定性静态评审
 18. 使用 `CompletableFuture` 有界线程池真实并行 Skill，并为每个 Skill 接入 Resilience4j Retry/CircuitBreaker/SemaphoreBulkhead 与独立 timeout；不可用时降级为 `SKIPPED/SKILL_UNAVAILABLE`。
 19. 实现 CodeAssay 受控声明式 HTTP 测试基线：从当前 head 读取 `testcases/**/*.json`，使用 Draft 2020-12 严格 Schema、受限表达式、顺序 `data_pre`、WireMock Jetty 12、7 类响应断言和结构化差异，并通过 Execution/CaseResult 与当前 head API 提供报告。
 20. 设计 Assay Kafka command/result 与 run-token 租约状态机，HTTP 在事务外执行，结果/幂等 TEST_REPORT/Outbox 在短事务原子提交；旧 head 取消，只有全部启用用例通过才满足 blocking Merge 门禁。
-21. 使用 Vue 3、TypeScript、Pinia、Vue Router 和 vue-i18n 实现代码协作工作台与中英文切换，完成格式、类型、生产构建和浏览器渲染验证。
-22. 建立自动化与 Windows 真实环境双层验收：后端 82 项测试全通过、Flyway V1～V8、全模块 Checkstyle 0 违规；M4 八阶段覆盖真实 Git push 的通过/失败两次 head、Kafka、结构化报告、幂等、门禁、脱敏、零残留与服务恢复。
-23. 将项目首次公开发布到 `Tmiemie/CodeTrove`：以 Git 暂存区审计真实上传文件，排除 Secret、运行数据、IDE/构建产物与大文件，修复 `.gitignore` 误伤前端 `src/data` 的问题，添加 MIT 与跨平台换行/执行位规则；验证远端 218 个文件完整、本地/远端 SHA 一致，并完成首轮 GitHub Actions 成功运行。
+21. 使用 Vue 3、TypeScript、Pinia、Vue Router 和 vue-i18n 实现双语代码协作工作台，并通过统一 Fetch Client 接入真实 Auth/Repository/MR/Check/Curator/Assay/Merge API；Token 仅保存在 `sessionStorage`，401 自动退出，无 API 能力只读展示。
+22. 建立浏览器可交互产品闭环：真实注册登录、创建仓库、浏览 tree/blob、创建 MR、查看 Diff 与报告、发表评论，并在 Curator `SUCCESS/NO_FINDINGS` 和 Assay `SUCCESS/ALL_CASES_PASSED` 后完成真实 `MERGED`。
+23. 建立自动化与 Windows 真实环境双层验收：后端 82 项测试全通过、Flyway V1～V8、全模块 Checkstyle 0 违规；M4 八阶段覆盖真实 Git push 的通过/失败两次 head、Kafka、结构化报告、幂等、门禁、脱敏、零残留与服务恢复。
+24. 将项目首次公开发布到 `Tmiemie/CodeTrove`：以 Git 暂存区审计真实上传文件，排除 Secret、运行数据、IDE/构建产物与大文件，修复 `.gitignore` 误伤前端 `src/data` 的问题，添加 MIT 与跨平台换行/执行位规则；验证远端 218 个文件完整、本地/远端 SHA 一致，并完成首轮 GitHub Actions 成功运行。
 
 > CI 边界：目前只有首次公开 `main` 的一次成功运行证据，可以写“首轮 GitHub Actions 通过”，不能写“远端 CI 长期稳定运行”。
 
@@ -1968,7 +2033,7 @@ Git push → Merge Request → CodeCurator 确定性静态评审
 
 ---
 
-# 14. 后续功能记录模板
+# 15. 后续功能记录模板
 
 ```markdown
 ## 功能 <里程碑-编号>：<功能名称>

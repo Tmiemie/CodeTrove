@@ -19,7 +19,7 @@
 
 
 
-1. **闭环真实可运行**：稳定演示从 push、创建 MR、确定性静态评审、受控声明式 HTTP 测试到门禁合并的当前完整流程；外部 LLM 和录制/AI 用例进入后续阶段。
+1. **闭环真实可运行**：已稳定演示浏览器登录/建仓、Git push、创建 MR、确定性静态评审、受控声明式 HTTP 测试、Check 门禁与合并；外部 LLM 和录制/AI 用例进入后续阶段。
 
 2. **实现与简历一致**：只有已经完成、测试并留有可复现证据的能力，才能写成 “已实现”；规划能力必须明确标为演进方向。
 
@@ -55,6 +55,7 @@
 20. [docs/20-m3-curator-verification-record.md](docs/20-m3-curator-verification-record.md)：M3 CodeCurator 确定性静态评审、并行/Judge/幂等评论、Resilience4j 降级与真实环境验收记录。
 21. [docs/21-m4-assay-verification-record.md](docs/21-m4-assay-verification-record.md)：M4 CodeAssay 严格 Schema、受控 HTTP 执行、Kafka/Check 闭环与 Windows 八阶段验收记录。
 22. [docs/22-github-release-record.md](docs/22-github-release-record.md)：首次 GitHub 公开发布、敏感信息/大文件/生成物审计、远端完整性和首轮 CI 证据。
+23. [docs/23-m45-frontend-backend-integration-verification-record.md](docs/23-m45-frontend-backend-integration-verification-record.md)：M4.5 Vue 工作台真实 REST API 联调、浏览器主链路与可交互产品 MVP 验收记录。
 
 若总设计与细化契约冲突，应先修正文档并形成一致结论，不允许在实现中静默选择其中一种口径。
 
@@ -238,7 +239,7 @@ Check 汇总；只有当前 head 的 blocking `assay.integration=SUCCESS` 才允
 | Kafka 事件与 Outbox | MR 创建 / 更新事务内写 Outbox，可靠投递并幂等消费 | 阶段 2 |
 | 代码 / MR 全文搜索 | Elasticsearch + Canal，指标证明需要后引入 | 阶段 7 |
 
-当前实现状态：M1.5 已完成 MR 创建/列表/详情/更新/关闭、固定快照 Diff 和普通/行级评论；M1.6 已完成成功 push 后 OPEN MR head/version 与提交历史同步，以及带冲突检测、目标引用 CAS、持久化幂等和 PENDING 恢复的 `OPEN → MERGED` 基础合并；M2 已完成 Transactional Outbox、Kafka 幂等消费/DLQ、按 head 的 Check Suite/Run 与阻塞型 Merge 门禁；M3 已完成 CodeCurator 确定性静态评审基线；M4 已完成 CodeAssay 受控声明式 HTTP 测试基线，包括严格 Schema、受限表达式、`data_pre`、回环 WireMock、响应断言、Execution/CaseResult、Kafka command/result、幂等 TEST_REPORT 与 blocking Check。Review/Approval、外部 LLM、任意 MR 构建部署、Docker 沙箱、DB/Bean Mock、流量录制和 AI 用例生成仍未实现。
+当前实现状态：M1.5 已完成 MR 创建/列表/详情/更新/关闭、固定快照 Diff 和普通/行级评论；M1.6 已完成成功 push 后 OPEN MR head/version 与提交历史同步，以及带冲突检测、目标引用 CAS、持久化幂等和 PENDING 恢复的 `OPEN → MERGED` 基础合并；M2 已完成 Transactional Outbox、Kafka 幂等消费/DLQ、按 head 的 Check Suite/Run 与阻塞型 Merge 门禁；M3 已完成 CodeCurator 确定性静态评审基线；M4 已完成 CodeAssay 受控声明式 HTTP 测试基线；M4.5 已完成 Vue 工作台真实 REST 联调，可从浏览器完成登录、仓库、MR、Diff/评论、质量报告与门禁 Merge。Review/Approval、成员管理、外部 LLM、任意 MR 构建部署、Docker 沙箱、DB/Bean Mock、流量录制和 AI 用例生成仍未实现。
 
 ### 3.1 存储分层
 

@@ -1,17 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 import {
   Bell,
   Box,
-  ChevronDown,
   CircleDot,
   Code2,
   GitPullRequest,
   Globe2,
+  LogOut,
   Menu,
   PlayCircle,
-  Plus,
   Search,
   Settings,
   Sparkles,
@@ -19,15 +18,18 @@ import {
 } from "lucide-vue-next";
 import { useI18n } from "vue-i18n";
 import { useWorkspaceStore } from "./stores/workspace";
+import { useSessionStore } from "./stores/session";
 import { setAppLocale, type AppLocale } from "./i18n";
 import CatTroveMark from "./components/CatTroveMark.vue";
 import CatAvatar from "./components/CatAvatar.vue";
 
 const route = useRoute();
 const router = useRouter();
-const store = useWorkspaceStore();
+const workspace = useWorkspaceStore();
+const session = useSessionStore();
 const { t, locale } = useI18n();
 const mobileNavOpen = ref(false);
+const shellVisible = computed(() => route.path !== "/login");
 
 const navGroups = computed(() => [
   {
@@ -38,7 +40,6 @@ const navGroups = computed(() => [
         label: t("navigation.pullRequests"),
         path: "/pull-requests",
         icon: GitPullRequest,
-        count: 2,
       },
     ],
   },
@@ -51,37 +52,47 @@ const navGroups = computed(() => [
   },
 ]);
 
-const activePath = computed(() => {
-  if (route.path.startsWith("/pull-requests")) return "/pull-requests";
-  return route.path;
-});
+const activePath = computed(() =>
+  route.path.startsWith("/pull-requests") ? "/pull-requests" : route.path,
+);
+const currentTitle = computed(
+  () =>
+    navGroups.value
+      .flatMap((group) => group.items)
+      .find((item) => item.path === activePath.value)?.label ?? "CodeTrove",
+);
 
-const currentTitle = computed(() => {
-  const item = navGroups.value
-    .flatMap((group) => group.items)
-    .find((entry) => entry.path === activePath.value);
-  return item?.label ?? "CodeTrove";
+onMounted(async () => {
+  await session.initialize();
+  if (!session.token && route.path !== "/login") await router.replace("/login");
 });
 
 function runSearch() {
-  const query = store.searchQuery.trim();
-  router.push({ path: "/code", query: query ? { q: query } : {} });
-  store.notify(
-    query
-      ? t("repository.searchMatches", { query })
-      : t("header.searchPlaceholder"),
-  );
+  const query = workspace.searchQuery.trim();
+  void router.push({ path: "/code", query: query ? { q: query } : {} });
 }
 
 function toggleLocale() {
   const nextLocale: AppLocale = locale.value === "en-US" ? "zh-CN" : "en-US";
   setAppLocale(nextLocale);
-  store.notify(t("common.switchedLanguage"));
+  workspace.notify(t("common.switchedLanguage"));
+}
+
+function changeRepository(event: Event) {
+  const id = (event.target as HTMLSelectElement).value;
+  const repository = session.repositories.find((item) => item.id === id);
+  if (repository) session.selectRepository(repository);
+}
+
+async function logout() {
+  session.logout();
+  await router.replace("/login");
 }
 </script>
 
 <template>
-  <div class="app-shell" :class="{ 'sidebar-open': mobileNavOpen }">
+  <RouterView v-if="!shellVisible" />
+  <div v-else class="app-shell" :class="{ 'sidebar-open': mobileNavOpen }">
     <aside class="dashboard-sidebar" :aria-label="t('navigation.repository')">
       <div class="sidebar-brand-row">
         <RouterLink
@@ -106,14 +117,29 @@ function toggleLocale() {
         </button>
       </div>
 
-      <div class="sidebar-project">
+      <label class="sidebar-project">
         <span class="project-icon"><Box :size="17" /></span>
         <span
-          ><small>{{ t("navigation.currentRepository") }}</small
-          ><strong>Tmiemie / CodeTrove</strong></span
-        >
-        <span class="project-private">{{ t("common.private") }}</span>
-      </div>
+          ><small>{{ t("navigation.currentRepository") }}</small>
+          <select
+            v-if="session.repositories.length"
+            :value="session.currentRepository?.id"
+            @change="changeRepository"
+          >
+            <option
+              v-for="repository in session.repositories"
+              :key="repository.id"
+              :value="repository.id"
+            >
+              {{ repository.owner }} / {{ repository.name }}
+            </option>
+          </select>
+          <strong v-else>{{ t("repository.noRepository") }}</strong>
+        </span>
+        <span v-if="session.currentRepository" class="project-private">{{
+          session.currentRepository.visibility
+        }}</span>
+      </label>
 
       <nav class="sidebar-nav">
         <section
@@ -129,10 +155,8 @@ function toggleLocale() {
             :class="{ active: activePath === item.path }"
             @click="mobileNavOpen = false"
           >
-            <component :is="item.icon" :size="18" />
-            <span>{{ item.label }}</span>
-            <span v-if="item.count" class="sidebar-count">{{
-              item.count
+            <component :is="item.icon" :size="18" /><span>{{
+              item.label
             }}</span>
           </RouterLink>
         </section>
@@ -145,23 +169,19 @@ function toggleLocale() {
           ><span>{{ t("navigation.qualityProtects") }}</span>
         </div>
       </div>
-
-      <button
-        class="sidebar-profile"
-        type="button"
-        @click="store.notify('Tmiemie')"
-      >
+      <button class="sidebar-profile" type="button" @click="logout">
         <span class="avatar"><CatAvatar :size="27" /></span>
         <span
-          ><strong>Tmiemie</strong
-          ><small>{{ t("navigation.repositoryOwner") }}</small></span
+          ><strong>{{
+            session.user?.displayName || session.user?.username
+          }}</strong
+          ><small>{{ t("auth.signOut") }}</small></span
         >
-        <ChevronDown :size="14" />
+        <LogOut :size="15" />
       </button>
     </aside>
 
     <div class="sidebar-backdrop" @click="mobileNavOpen = false"></div>
-
     <div class="dashboard-main">
       <header class="global-header">
         <button
@@ -176,17 +196,13 @@ function toggleLocale() {
           <span>{{ t("navigation.workspace") }}</span
           ><strong>{{ currentTitle }}</strong>
         </div>
-
         <form class="global-search" role="search" @submit.prevent="runSearch">
-          <Search :size="17" />
-          <input
-            v-model="store.searchQuery"
+          <Search :size="17" /><input
+            v-model="workspace.searchQuery"
             :aria-label="t('common.search')"
             :placeholder="t('header.searchPlaceholder')"
-          />
-          <kbd>/</kbd>
+          /><kbd>/</kbd>
         </form>
-
         <div class="header-actions">
           <button
             class="language-switch"
@@ -197,80 +213,58 @@ function toggleLocale() {
             <Globe2 :size="17" /><span>{{ t("common.language") }}</span>
           </button>
           <button
-            class="icon-button"
-            type="button"
-            :aria-label="t('header.createNew')"
-            @click="store.notifyKey('header.createOpened')"
-          >
-            <Plus :size="18" /><ChevronDown :size="13" />
-          </button>
-          <button
             class="icon-button notification-button"
             type="button"
             :aria-label="t('header.notifications')"
-            @click="store.notifyKey('header.allCaughtUp')"
+            @click="workspace.notifyKey('header.allCaughtUp')"
           >
             <Bell :size="18" /><span></span>
           </button>
         </div>
       </header>
 
-      <section class="repo-header">
+      <section v-if="session.currentRepository" class="repo-header">
         <div class="repo-title-row">
           <div class="repo-identity">
             <span class="repo-icon"><Box :size="19" /></span
-            ><span class="repo-owner">Tmiemie</span><span class="slash">/</span
-            ><strong>CodeTrove</strong
-            ><span class="badge">{{ t("common.private") }}</span>
+            ><span class="repo-owner">{{
+              session.currentRepository.owner
+            }}</span
+            ><span class="slash">/</span
+            ><strong>{{ session.currentRepository.name }}</strong
+            ><span class="badge">{{
+              session.currentRepository.visibility
+            }}</span>
           </div>
           <div class="repo-actions">
-            <button
-              class="button button-muted"
-              type="button"
-              @click="store.notifyKey('header.notificationsSet')"
-            >
-              <Bell :size="15" /> {{ t("header.notifications") }}
-            </button>
-            <button
-              class="button button-accent"
-              type="button"
-              @click="store.notifyKey('header.starred')"
-            >
-              {{ t("header.star") }} <span class="count">8</span>
-            </button>
+            <code>{{ session.currentRepository.currentUserRole }}</code>
           </div>
         </div>
       </section>
 
       <main class="page-container"><RouterView /></main>
-
       <footer class="site-footer">
         <div class="footer-brand"><CatTroveMark :size="19" /> CodeTrove</div>
         <span>{{ t("footer.slogan") }}</span>
         <nav :aria-label="t('footer.docs')">
           <a
-            href="https://github.com/Tmiemie/CodeTrove#documentation"
+            href="https://github.com/Tmiemie/CodeTrove"
             target="_blank"
             rel="noreferrer"
-            >{{ t("footer.docs") }}</a
+            >GitHub</a
           ><a
             href="https://github.com/Tmiemie/CodeTrove/blob/main/docs/04-api-contract.md"
             target="_blank"
             rel="noreferrer"
             >{{ t("footer.api") }}</a
-          ><button
-            type="button"
-            @click="store.notifyKey('footer.supportOpened')"
           >
-            {{ t("footer.support") }}
-          </button>
         </nav>
       </footer>
     </div>
 
     <Transition name="toast"
-      ><div v-if="store.toast" class="toast" role="status">
-        <CircleDot :size="16" /> {{ store.toast }}
+      ><div v-if="workspace.toast" class="toast" role="status">
+        <CircleDot :size="16" /> {{ workspace.toast }}
       </div></Transition
     >
   </div>

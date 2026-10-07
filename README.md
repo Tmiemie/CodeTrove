@@ -4,7 +4,7 @@
 
 CodeTrove is an intelligent code collaboration and quality assurance platform. It connects repository collaboration, AI-assisted review, declarative integration tests, and merge checks in one workflow.
 
-> Current status: M0, M1.1–M1.6, M2, M3, and the M4 CodeAssay declarative HTTP baseline are complete. CodeTrove now includes authentication, repository authorization, Git Smart HTTP, merge requests, conflict-safe/idempotent merge commits, Transactional Outbox, Kafka idempotency/DLQ, current-head Check gating, deterministic logic/security review, and a controlled HTTP test executor with schema validation, data preparation, WireMock, response assertions, structured reports, and blocking Assay checks. External LLM/RAG/Memory, arbitrary MR build/deployment, Docker sandboxing, DB/Bean Mock assertions, traffic recording, and AI-generated cases remain future work.
+> Current status: M0 through M4.5 are complete. CodeTrove is now a browser-operable product MVP: the Vue workspace uses real Spring Boot REST APIs for authentication, repository creation and browsing, merge requests, diffs, comments, Check/Curator/Assay reports, and gated merge. The backend still provides the previously verified authentication, repository authorization, Git Smart HTTP, conflict-safe/idempotent merge commits, Transactional Outbox, Kafka idempotency/DLQ, deterministic review, and controlled declarative HTTP testing. External LLM/RAG/Memory, arbitrary MR build/deployment, Docker sandboxing, DB/Bean Mock assertions, traffic recording, and AI-generated cases remain future work.
 
 ## Current capabilities
 
@@ -32,6 +32,8 @@ CodeTrove is an intelligent code collaboration and quality assurance platform. I
 - Kafka-driven `assay.execution-requested/started/completed`, database consumer idempotency, run-token lease recovery, and a blocking Assay Check that only passes when enabled cases all pass
 - CodeAssay is intentionally not a general sandbox: it does not build/deploy arbitrary MR code and does not yet provide Docker isolation, DB assertions, Spring Bean Mock, fission, cleanup, traffic recording, or AI-generated cases
 - Kafka topics: `codetrove.mr.events.v1`, `codetrove.curator.commands.v1`, `codetrove.curator.results.v1`, `codetrove.assay.commands.v1`, `codetrove.assay.results.v1`, and `codetrove.dlq.v1`
+- Browser-operable login/register, repository selection and creation, branch/tree/blob browsing, MR creation/detail/diff/comments, Check/Curator/Assay reports, and gated merge through real REST APIs
+- Session-scoped JWT and repository context in `sessionStorage`; structured backend errors and automatic 401 sign-out
 - GitHub Actions for backend tests and frontend checks
 - Blue-purple-pink dashboard interface with a restrained cat-curator identity
 
@@ -107,6 +109,8 @@ CODETROVE_GIT_MAX_COMMAND_BYTES
 CODETROVE_GIT_MAX_OBJECT_BYTES
 CODETROVE_GIT_MAX_PACK_BYTES
 CODETROVE_GIT_MAX_CONCURRENT_REQUESTS
+VITE_CODETROVE_API_BASE_URL
+VITE_CODETROVE_GIT_BASE_URL
 ```
 
 Recommended local database URL:
@@ -164,7 +168,7 @@ Frontend URL:
 
 - `http://127.0.0.1:28741`
 
-The current frontend uses demo data. Backend API integration is still pending.
+The frontend proxies `/api` to the local Spring Boot service. Its core workflow uses real backend data; `mock.ts` is no longer a fact source for repository, MR, Diff, comment, Check, Curator, Assay, or Merge pages. Register or sign in, create/select a repository, push a feature branch through Git Smart HTTP, then create and review a merge request in the browser.
 
 ## Git Smart HTTP
 
@@ -304,6 +308,7 @@ Start with:
 - `docs/19-m2-event-check-verification-record.md`
 - `docs/20-m3-curator-verification-record.md`
 - `docs/21-m4-assay-verification-record.md`
+- `docs/23-m45-frontend-backend-integration-verification-record.md`
 - `docs/22-github-release-record.md`
 
 Every independently accepted feature must update the resume feature ledger together with its implementation and verification documents.

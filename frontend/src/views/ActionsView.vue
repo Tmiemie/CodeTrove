@@ -1,43 +1,98 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
+import { RouterLink } from "vue-router";
 import { useI18n } from "vue-i18n";
 import {
   AlertCircle,
   CheckCircle2,
-  ChevronDown,
   Clock3,
-  Play,
   RefreshCw,
-  Search,
+  ShieldCheck,
   TestTube2,
   XCircle,
 } from "lucide-vue-next";
-import { testCases } from "../data/mock";
-import { useWorkspaceStore } from "../stores/workspace";
+import { api } from "../api";
+import { errorMessage } from "../api/client";
+import type {
+  AssayReport,
+  CheckResponse,
+  MergeRequest,
+  ReviewReport,
+} from "../api/types";
+import { useSessionStore } from "../stores/session";
 
-const store = useWorkspaceStore();
+const session = useSessionStore();
 const { t } = useI18n();
-const query = ref("");
-const status = ref("all");
-const rerunning = ref(false);
-
-const filtered = computed(() =>
-  testCases.filter((test) => {
-    const queryMatch = `${test.name} ${t(test.categoryKey)}`
-      .toLowerCase()
-      .includes(query.value.toLowerCase());
-    const statusMatch = status.value === "all" || test.status === status.value;
-    return queryMatch && statusMatch;
-  }),
+const mergeRequests = ref<MergeRequest[]>([]);
+const selectedIid = ref<number | null>(null);
+const checks = ref<CheckResponse | null>(null);
+const review = ref<ReviewReport | null>(null);
+const assay = ref<AssayReport | null>(null);
+const loading = ref(false);
+const error = ref("");
+const selectedMergeRequest = computed(
+  () =>
+    mergeRequests.value.find((item) => item.iid === selectedIid.value) ?? null,
+);
+const displayedSuite = computed(
+  () => checks.value?.current ?? checks.value?.history[0] ?? null,
+);
+const currentRuns = computed(() => displayedSuite.value?.runs ?? []);
+const summaryStatus = computed(
+  () => displayedSuite.value?.status ?? "NOT_STARTED",
 );
 
-function rerun() {
-  rerunning.value = true;
-  store.notifyKey("actions.queued");
-  window.setTimeout(() => {
-    rerunning.value = false;
-    store.notifyKey("actions.completed");
-  }, 1400);
+watch(
+  () => session.currentRepository?.id,
+  () => void loadMergeRequests(),
+  { immediate: true },
+);
+watch(selectedIid, () => void loadReports());
+
+async function loadMergeRequests() {
+  if (!session.currentRepository) {
+    mergeRequests.value = [];
+    selectedIid.value = null;
+    return;
+  }
+  loading.value = true;
+  error.value = "";
+  try {
+    mergeRequests.value = (
+      await api.mergeRequests(session.currentRepository.id)
+    ).data;
+    selectedIid.value = mergeRequests.value[0]?.iid ?? null;
+    if (!selectedIid.value) clearReports();
+  } catch (requestError) {
+    error.value = errorMessage(requestError);
+  } finally {
+    loading.value = false;
+  }
+}
+function clearReports() {
+  checks.value = null;
+  review.value = null;
+  assay.value = null;
+}
+async function loadReports() {
+  if (!session.currentRepository || !selectedIid.value) return;
+  loading.value = true;
+  error.value = "";
+  try {
+    const id = session.currentRepository.id;
+    const [checkResult, reviewResult, assayResult] = await Promise.all([
+      api.checks(id, selectedIid.value),
+      api.findings(id, selectedIid.value),
+      api.assayReport(id, selectedIid.value),
+    ]);
+    checks.value = checkResult.data;
+    review.value = reviewResult.data;
+    assay.value = assayResult.data;
+  } catch (requestError) {
+    error.value = errorMessage(requestError);
+  } finally {
+    loading.value = false;
+  }
 }
 </script>
 
@@ -46,127 +101,206 @@ function rerun() {
     <header class="page-heading split-heading">
       <div>
         <h1>{{ t("actions.title") }}</h1>
-        <p>{{ t("actions.description") }}</p>
+        <p>{{ t("m45.actions.description") }}</p>
       </div>
       <button
         class="button button-primary"
-        type="button"
-        :disabled="rerunning"
-        @click="rerun"
+        :disabled="loading || !selectedIid"
+        @click="loadReports"
       >
-        <RefreshCw :size="15" :class="{ spin: rerunning }" />
-        {{ rerunning ? t("actions.running") : t("actions.rerunAll") }}
+        <RefreshCw :size="15" :class="{ spin: loading }" />{{
+          t("m45.actions.refreshReports")
+        }}
       </button>
     </header>
-
-    <div class="workflow-summary">
-      <div class="workflow-status failed">
-        <XCircle :size="22" />
-        <div>
-          <strong>{{ t("actions.integrationTests") }}</strong
-          ><span>{{ t("actions.completedFailure", { count: 1 }) }}</span>
-        </div>
-      </div>
-      <dl>
-        <div>
-          <dt>{{ t("actions.triggeredBy") }}</dt>
-          <dd>{{ t("actions.pullRequest", { id: 24 }) }}</dd>
-        </div>
-        <div>
-          <dt>{{ t("actions.commit") }}</dt>
-          <dd><code>7ca91be</code></dd>
-        </div>
-        <div>
-          <dt>{{ t("actions.duration") }}</dt>
-          <dd>4m 12s</dd>
-        </div>
-      </dl>
+    <div v-if="!session.currentRepository" class="empty-state">
+      {{ t("m45.shared.selectRepository") }}
     </div>
-
-    <div class="test-layout">
-      <aside class="test-jobs">
-        <h2>{{ t("actions.jobs") }}</h2>
-        <button class="active">
-          <TestTube2 :size="16" /><span
-            >assay-tests<small>{{
-              t("actions.failureCount", { count: 1 })
-            }}</small></span
-          ><XCircle :size="16" /></button
-        ><button>
-          <CheckCircle2 :size="16" /><span
-            >curator-review<small>{{ t("actions.passed") }}</small></span
-          ><CheckCircle2 :size="16" />
-        </button>
-      </aside>
-      <div class="test-content">
-        <div class="test-toolbar">
-          <div class="pr-search">
-            <Search :size="15" /><input
-              v-model="query"
-              :placeholder="t('actions.searchCases')"
-              :aria-label="t('actions.searchCases')"
-            />
-          </div>
-          <label class="select-button compact"
-            ><select v-model="status">
-              <option value="all">{{ t("actions.allStatuses") }}</option>
-              <option value="passed">{{ t("actions.passed") }}</option>
-              <option value="failed">{{ t("actions.failed") }}</option></select
-            ><ChevronDown :size="13"
-          /></label>
-        </div>
-
-        <div class="test-list">
-          <article v-for="test in filtered" :key="test.name" class="test-row">
-            <component
-              :is="test.status === 'passed' ? CheckCircle2 : XCircle"
-              :size="18"
-              :class="test.status === 'passed' ? 'success-text' : 'danger-text'"
-            />
-            <div>
-              <strong>{{ test.name }}</strong>
-              <p>{{ t(test.categoryKey) }}</p>
-            </div>
-            <span class="test-duration"
-              ><Clock3 :size="14" /> {{ test.duration }}</span
-            ><button
-              class="icon-button light"
-              type="button"
-              :aria-label="t('actions.runTest')"
-              @click="
-                store.notifyKey('actions.testQueued', { name: test.name })
-              "
+    <template v-else>
+      <div class="quality-selector settings-card">
+        <label
+          >{{ t("m45.actions.mergeRequest")
+          }}<select v-model="selectedIid">
+            <option
+              v-for="item in mergeRequests"
+              :key="item.id"
+              :value="item.iid"
             >
-              <Play :size="15" />
-            </button>
-          </article>
-          <div v-if="filtered.length === 0" class="empty-state">
-            {{ t("actions.empty") }}
-          </div>
-        </div>
-
-        <article class="failure-detail">
-          <header>
-            <AlertCircle :size="18" /><strong>assay.invalid-schema</strong
-            ><span>{{ t("actions.schemaFailed") }}</span>
-          </header>
-          <div class="failure-grid">
-            <div>
-              <span>{{ t("actions.jsonPointer") }}</span
-              ><code>/assertions/0/operator</code>
-            </div>
-            <div>
-              <span>{{ t("actions.expected") }}</span
-              ><code>one of [equals, exists, contains]</code>
-            </div>
-            <div>
-              <span>{{ t("actions.actual") }}</span
-              ><code>matches</code>
-            </div>
-          </div>
-          <pre><code>ASSAY_SCHEMA_INVALID: unsupported assertion operator at /assertions/0/operator</code></pre>
-        </article>
+              #{{ item.iid }} · {{ item.title }}
+            </option>
+          </select></label
+        ><RouterLink
+          v-if="selectedMergeRequest"
+          class="button button-muted"
+          :to="`/pull-requests/${selectedMergeRequest.iid}`"
+          >{{ t("m45.actions.openMergeRequest") }}</RouterLink
+        >
       </div>
-    </div>
+      <div v-if="error" class="api-error">{{ error }}</div>
+      <div v-if="loading" class="empty-state">
+        {{ t("m45.actions.loading") }}
+      </div>
+      <div v-else-if="!selectedIid" class="empty-state">
+        {{ t("m45.actions.noMergeRequest") }}
+      </div>
+      <template v-else>
+        <div class="workflow-summary">
+          <div class="workflow-status" :class="summaryStatus.toLowerCase()">
+            <component
+              :is="
+                summaryStatus === 'SUCCESS'
+                  ? CheckCircle2
+                  : summaryStatus === 'FAILED'
+                    ? XCircle
+                    : Clock3
+              "
+              :size="22"
+            />
+            <div>
+              <strong>{{ t("m45.actions.checkSuite") }}</strong
+              ><span>{{ summaryStatus }}</span>
+            </div>
+          </div>
+          <dl>
+            <div>
+              <dt>{{ t("m45.actions.mergeRequest") }}</dt>
+              <dd>#{{ selectedIid }}</dd>
+            </div>
+            <div>
+              <dt>{{ t("m45.actions.head") }}</dt>
+              <dd>
+                <code>{{ displayedSuite?.headCommit || "—" }}</code>
+              </dd>
+            </div>
+            <div>
+              <dt>{{ t("m45.actions.history") }}</dt>
+              <dd>
+                {{
+                  t("m45.actions.suites", {
+                    count: checks?.history.length ?? 0,
+                  })
+                }}
+              </dd>
+            </div>
+          </dl>
+        </div>
+        <div class="quality-grid">
+          <section class="settings-card quality-card">
+            <header>
+              <ShieldCheck :size="19" />
+              <div>
+                <h2>{{ t("m45.actions.checkRuns") }}</h2>
+                <p>{{ t("m45.actions.checkRunsHelp") }}</p>
+              </div>
+            </header>
+            <article
+              v-for="run in currentRuns"
+              :key="run.id"
+              class="quality-row"
+            >
+              <component
+                :is="
+                  run.status === 'SUCCESS'
+                    ? CheckCircle2
+                    : run.status === 'FAILED'
+                      ? XCircle
+                      : Clock3
+                "
+                :size="18"
+                :class="
+                  run.status === 'SUCCESS'
+                    ? 'success-text'
+                    : run.status === 'FAILED'
+                      ? 'danger-text'
+                      : ''
+                "
+              />
+              <div>
+                <strong>{{ run.name }}</strong>
+                <p>
+                  {{ run.checkType }} · {{ run.status }} ·
+                  {{ run.conclusion || "—" }}
+                </p>
+              </div>
+              <span>{{
+                t(
+                  run.blocking
+                    ? "m45.actions.blocking"
+                    : "m45.actions.advisory",
+                )
+              }}</span>
+            </article>
+            <div v-if="currentRuns.length === 0" class="empty-state">
+              {{ t("m45.actions.noRuns") }}
+            </div>
+          </section>
+          <section class="settings-card quality-card">
+            <header>
+              <AlertCircle :size="19" />
+              <div>
+                <h2>CodeCurator</h2>
+                <p>
+                  {{ review?.task?.status || "NOT_STARTED" }} ·
+                  {{ review?.task?.conclusion || "—" }}
+                </p>
+              </div>
+            </header>
+            <article
+              v-for="finding in review?.findings ?? []"
+              :key="finding.id"
+              class="quality-row finding-row"
+            >
+              <AlertCircle :size="18" />
+              <div>
+                <strong>{{ finding.severity }} · {{ finding.title }}</strong>
+                <p>{{ finding.message }}</p>
+                <code>{{ finding.filePath }}:{{ finding.lineNumber }}</code>
+              </div>
+              <span>{{ finding.disposition }}</span>
+            </article>
+            <div v-if="!review?.findings.length" class="empty-state">
+              {{ t("m45.actions.noFindings") }}
+            </div>
+          </section>
+          <section class="settings-card quality-card assay-card">
+            <header>
+              <TestTube2 :size="19" />
+              <div>
+                <h2>CodeAssay</h2>
+                <p>
+                  {{ assay?.execution?.status || "NOT_STARTED" }} ·
+                  {{ assay?.execution?.conclusion || "—" }}
+                </p>
+              </div>
+            </header>
+            <article
+              v-for="testCase in assay?.cases ?? []"
+              :key="testCase.id"
+              class="quality-row"
+            >
+              <component
+                :is="testCase.status === 'PASSED' ? CheckCircle2 : XCircle"
+                :size="18"
+                :class="
+                  testCase.status === 'PASSED' ? 'success-text' : 'danger-text'
+                "
+              />
+              <div>
+                <strong>{{ testCase.caseKey }}</strong>
+                <p>
+                  {{ testCase.sourcePath }} ·
+                  {{ testCase.failureCode || t("m45.shared.noFailure") }}
+                </p>
+              </div>
+              <span>{{ testCase.durationMs }} ms</span>
+            </article>
+            <div v-if="!assay?.cases.length" class="empty-state">
+              {{ t("m45.actions.noCases") }}
+            </div>
+          </section>
+        </div>
+        <p class="boundary-note">{{ t("m45.actions.rerunBoundary") }}</p>
+      </template>
+    </template>
   </section>
 </template>

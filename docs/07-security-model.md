@@ -23,6 +23,10 @@ CodeTrove 同时处理源代码、Git 凭据、LLM 输入、测试数据和可�
 - `LOCKED/DISABLED` 用户即使持有未过期 Token 也不能建立认证上下文。
 - 登录、Token 刷新和敏感操作限流；连续失败触发延迟或临时锁定（限流与锁定属于后续实现项）。
 - 密码、Token、验证码不得出现在 URL。
+- 浏览器 M4.5 使用 `sessionStorage` 保存 Access Token 与当前仓库选择，不使用 Local Storage；关闭标签页后会话消失。
+- 前端统一 API Client 只向配置的 `/api/v1` base 添加 Bearer Token，401 时清理 Token、用户和仓库上下文并跳转登录页。
+- 前端语言偏好可写入 Local Storage，但不包含认证信息。
+- 当前没有 Refresh Token；短期 JWT 到期后的写请求由后端 401 拒绝，前端不得伪造成功。
 
 ## 3. 授权
 

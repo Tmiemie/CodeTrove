@@ -190,7 +190,7 @@ Token 只包含用户 ID、用户名、签发时间、过期时间和 token ID�
 - 二进制文件返回 `binary=true`、`contentIncluded=false`、`notIncludedReason=BINARY`；超大文本返回 `binary=false`、`contentIncluded=false`、`notIncludedReason=TOO_LARGE`。M1.4 不提供任意文件下载端点。
 - 目录、submodule 或不存在路径返回 404 `REPOSITORY_PATH_NOT_FOUND`。
 
-### 成员管理
+### 成员管理（规划，尚未实现）
 
 - `GET /repositories/{repoId}/members`
 - `POST /repositories/{repoId}/members`
@@ -345,7 +345,7 @@ Diff 评论：
 - 当前 MR 尚未被事件消费者建立 Suite 时，返回 `current=null`，不伪造 SUCCESS。
 - 新 head 对应的新 Suite 激活后，旧 Suite 标记 `isCurrent=false`，其结果不能参与门禁。
 
-### POST `/repositories/{repoId}/merge-requests/{iid}/checks/{checkName}/rerun`
+### POST `/repositories/{repoId}/merge-requests/{iid}/checks/{checkName}/rerun`（规划，尚未实现）
 
 - 权限：MAINTAINER 或以上；可配置允许 DEVELOPER 重跑。
 - 必须绑定当前 `headCommit`。
@@ -387,7 +387,17 @@ M4 没有公开上传/验证/批准 TestCase 的写 API。用例事实源是 MR 
 
 规划但尚未实现：执行历史列表、按 execution ID 查询、独立 testcase validate/approve、报告正文下载、rerun API。
 
-## 13. API 演进规则
+## 13. M4.5 Web 客户端消费约定
+
+- 前端默认以 `/api/v1` 为 API base，开发环境由 Vite 将 `/api` 代理到 `http://127.0.0.1:8080`；部署时可通过 `VITE_CODETROVE_API_BASE_URL` 覆盖。
+- Access Token 仅保存在当前标签页 `sessionStorage`，请求自动发送 `Authorization: Bearer <token>`；401 时清理会话并返回登录页。
+- 前端解析统一 `error.code/message/details/traceId` 并展示错误，不把失败请求改成本地成功状态。
+- Repository、MR、Diff、Comment、Check、Curator、Assay 与 Merge 页面使用本契约真实响应；JSON ID 继续保持字符串。
+- Check Run 的合并判定只看 blocking Run 的 `status=SUCCESS`；`conclusion` 用于保留 `NO_FINDINGS/ALL_CASES_PASSED` 等具体原因。
+- MR 合并后 current Suite 会转入 history；前端查询展示可使用 `current ?? history[0]`，但 Merge 门禁仍只由后端对 OPEN MR 的 current Suite 判定。
+- 后端当前没有仓库更新/归档/删除、成员管理、Check rerun 或 Finding disposition 写 API，M4.5 页面不得伪造这些动作。
+
+## 14. API 演进规则
 
 - `/api/v1` 内只做向后兼容新增。
 - 删除字段、改变枚举含义或错误语义时升级到 `/api/v2`。
